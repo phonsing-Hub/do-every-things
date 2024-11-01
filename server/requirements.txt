@@ -1,0 +1,6 @@
+#pip freeze > requirements.txt
+dlib==19.24.6
+mysql-connector-python==9.1.0
+numpy==2.1.2
+opencv-python==4.10.0.84
+python-dotenv==1.0.1
