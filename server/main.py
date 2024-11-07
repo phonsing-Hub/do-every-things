@@ -1,65 +1,65 @@
-import cv2
-import dlib
-import numpy as np
+#from typing import Union
+from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
+from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import HTTPException
+from src.lib.Face_Streaming import Face
+from src.database.mysql import mycursor
+from typing import List
+import json
 
-# โหลดโมเดลตรวจจับใบหน้าและจุด landmark
-detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor("src/models/shape_predictor_68_face_landmarks.dat")
-face_rec_model = dlib.face_recognition_model_v1("src/models/dlib_face_recognition_resnet_model_v1.dat")
+app = FastAPI()
+stream = Face()
 
-def get_face_encoding_and_landmarks(image_path):
-    # อ่านภาพ
-    img = cv2.imread(image_path)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.mount("/public", StaticFiles(directory="public"), name="public")
 
-    # ตรวจจับใบหน้าในภาพ
-    faces = detector(gray)
 
-    if len(faces) == 0:
-        print(f"No face detected in {image_path}")
-        return None, img
+@app.get("/")
+def read_root():
+    return {"Hello": "World"} 
 
-    for face in faces:
-        # ตีกอบสี่เหลี่ยมรอบใบหน้า
-        x, y, w, h = face.left() - 2, face.top() - 2, face.width() + 4, face.height() + 4
-        cv2.rectangle(img, (x, y), (x + w, y + h), (255, 0, 0), 2)
-        # ตรวจจับจุด landmark บนใบหน้า
-        landmarks = predictor(gray, face)
+@app.get("/api/v1/images")
+def get_img():
+    mycursor.execute("SELECT id, name, note, image_name FROM CPE422.users")
+    result = mycursor.fetchall()
+    print(result)
+    if result is None:
+        raise HTTPException(status_code=500, detail="Database query failed.")
+    elif not result:
+        raise HTTPException(status_code=404, detail="No users found.")
+    response_data = []
+    for data in result:
+        if "image_name" in data and data["image_name"]:
+            data["image_name"] = json.loads(data["image_name"])  # Parse image_name
+        response_data.append({
+            "key": data["id"],
+            "name": data["name"],
+            "note": data["note"],
+            "image_name": data["image_name"]
+        })
+    return JSONResponse(status_code=200, content=response_data)
 
-        # วาดจุด landmark บนใบหน้า (68 จุด)
-        for n in range(68):
-            x = landmarks.part(n).x
-            y = landmarks.part(n).y
-            cv2.circle(img, (x, y), 2, (0, 255, 0), -1)
+@app.post("/api/v1/upload")
+async def upload_images(name: str = Form(...),note: str = Form(...), images: List[UploadFile] = File(...)):
+     result: bool = False 
+     await stream.saveImage(name, images)
+     result = await stream.readImg_encoding(f"public/{name}",name, note)
+     if result:
+        raise HTTPException(status_code=201, detail={"message": "Images uploaded successfully"})
+     else:
+        raise HTTPException(status_code=400, detail={"message": "Images upload error"})
 
-        # สร้าง Face Encoding โดยใช้เวกเตอร์ 128 ค่า
-        encoding = np.array(face_rec_model.compute_face_descriptor(img, landmarks))
-        return encoding, img
-
-# กำหนดพาธสำหรับภาพสองใบหน้า
-face_A_path = "src/images/9arm1.jpg"  # ใบหน้า A
-face_B_path = "src/images/9arm2.webp"  # ใบหน้า B
-
-# รับ Face Encoding และภาพพร้อม landmarks สำหรับทั้งสองใบหน้า
-encoding_A, img_A = get_face_encoding_and_landmarks(face_A_path)
-encoding_B, img_B = get_face_encoding_and_landmarks(face_B_path)
-
-if encoding_A is not None and encoding_B is not None:
-    # เปรียบเทียบ Face Encoding
-    distance = np.linalg.norm(encoding_A - encoding_B)
-    threshold = 0.6  # ระยะทางที่ตั้งไว้เพื่อพิจารณาว่าใบหน้าตรงกัน
-
-    if distance < threshold:
-        print("Faces match!")
-    else:
-        print("Faces do not match.")
-
-# แสดงภาพของใบหน้า A พร้อม landmarks
-while True:
-    cv2.imshow("Face A with Landmarks", img_A)
-    cv2.imshow("Face B with Landmarks", img_B)
-    key = cv2.waitKey(1)
-    if key == ord('q'):
-            break
-    
-cv2.destroyAllWindows()
+@app.get("/api/v1/video")
+def video_feed():
+    stream.get_data_encoding_db()
+    return StreamingResponse(stream.open(), media_type="multipart/x-mixed-replace; boundary=frame")
+ 

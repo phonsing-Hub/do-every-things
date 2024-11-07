@@ -1,0 +1,35 @@
+services:
+  # MySQL
+  mysql:
+    container_name: "mysql"
+    image: arm64v8/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "password"
+      MYSQL_DATABASE: "mydb"
+    volumes:
+       - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - database_network
+    restart: unless-stopped
+
+  # phpMyAdmin
+  phpmyadmin:
+    container_name: "phpmyadmin"
+    image: arm64v8/phpmyadmin
+    environment:
+      PMA_HOST: "mysql"
+      MYSQL_ROOT_PASSWORD: "password"
+    ports:
+      - "8080:80"
+    networks:
+      - database_network
+    restart: unless-stopped
+
+networks:
+  database_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
