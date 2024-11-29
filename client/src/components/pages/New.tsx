@@ -1,19 +1,17 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Table } from "antd";
-import { Avatar, AvatarGroup, Button } from "@nextui-org/react";
+import { Avatar, AvatarGroup } from "@nextui-org/react";
 import type { TableProps } from "antd";
-import { MdEditSquare } from "react-icons/md";
 import FormModel from "../form/FormModel";
-
+import UpdateUser from "../form/UpdateUser";
 interface DataType {
   key: number;
   name: string;
-  image_name: string;
+  image_name: string[];
   note: string;
 }
 const columns: TableProps<DataType>["columns"] = [
-
   {
     title: "Name",
     dataIndex: "name",
@@ -40,17 +38,7 @@ const columns: TableProps<DataType>["columns"] = [
   {
     title: "Action",
     className: "w-32",
-    render: () => (
-      <Button
-        color="primary"
-        size="sm"
-        radius="sm"
-        variant="light"
-        startContent={<MdEditSquare size={20} className="text-default-500" />}
-      >
-        Edit
-      </Button>
-    ),
+    render: (_, record) => <UpdateUser record={record} />,
   },
 ];
 
@@ -61,6 +49,7 @@ function New() {
       const res = await axios.get("http://127.0.0.1:8000/api/v1/images");
       if (res.status === 200) {
         setData(res.data);
+       
       }
     } catch (error) {
       console.log(error);
@@ -86,7 +75,9 @@ function New() {
               </div>
             )}
             footer={() => (
-              <p className="font-bold text-xs text-default-400">ADET @V 0.1.0</p>
+              <p className="font-bold text-xs text-default-400">
+                ADET @V 0.1.0
+              </p>
             )}
           />
         </div>

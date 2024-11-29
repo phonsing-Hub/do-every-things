@@ -31,7 +31,7 @@ def read_root():
 def get_img():
     mycursor.execute("SELECT id, name, note, image_name FROM CPE422.users")
     result = mycursor.fetchall()
-    print(result)
+    
     if result is None:
         raise HTTPException(status_code=500, detail="Database query failed.")
     elif not result:
@@ -50,7 +50,6 @@ def get_img():
 
 @app.post("/api/v1/upload")
 async def upload_images(name: str = Form(...),note: str = Form(...), images: List[UploadFile] = File(...)):
-     result: bool = False 
      await stream.saveImage(name, images)
      result = await stream.readImg_encoding(f"public/{name}",name, note)
      if result:
@@ -62,4 +61,4 @@ async def upload_images(name: str = Form(...),note: str = Form(...), images: Lis
 def video_feed():
     stream.get_data_encoding_db()
     return StreamingResponse(stream.open(), media_type="multipart/x-mixed-replace; boundary=frame")
- 
+

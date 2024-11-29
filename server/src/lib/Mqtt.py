@@ -2,9 +2,9 @@ import random
 import json 
 from paho.mqtt import client as mqtt_client
 
-broker = 'broker.emqx.io'
+broker = '192.168.115.50'
 port = 1883
-topic = "64028780/open"
+topic = "64028780/Msg"
 client_id = f'publish-{random.randint(0, 1000)}'
 
 class PahoMQTT:

@@ -2,7 +2,7 @@ import os
 import cv2
 import dlib
 import time
-import  json
+import json
 import numpy as np
 from pathlib import Path
 from typing import List
@@ -173,7 +173,7 @@ class Face:
 
                 # current_time = time.time()
                 if name != "Unknow" and (start_time - last_publish_time > publish_interval):
-                    self.paho.publish({"LED1": 1, "LED2": 0})
+                    self.paho.publish({"LED": 1, "name": name})
                     last_publish_time = start_time 
                     print(f"{start_time}: onled")
 
